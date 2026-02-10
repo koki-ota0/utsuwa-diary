@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   deleteItem,
   loadItems,
   loadUsageLogs,
   saveUsageLogs,
+  seedItemsIfNeeded,
   type ItemCategory,
   type StoredItem,
 } from '../utils/storage'
 import { ItemCard } from '../components/common'
 import CategoryFilter from '../components/common/CategoryFilter'
 import ConfirmDialog from '../components/common/ConfirmDialog'
+import { initialItems } from '../constants/initialItems'
 
 type FilterCategory = ItemCategory | 'all'
 
@@ -22,52 +24,21 @@ const categoryLabels: Record<ItemCategory, string> = {
   Misc: 'その他',
 }
 
-const initialItems: StoredItem[] = [
-  {
-    id: 1,
-    name: '藍色のディナープレート',
-    category: 'Plate',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?auto=format&fit=crop&w=800&q=80',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 2,
-    name: '手作りの湯呑み',
-    category: 'Cup',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1514228742587-6b1558fcf93a?auto=format&fit=crop&w=800&q=80',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 3,
-    name: '陶器のボウル',
-    category: 'Bowl',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: 4,
-    name: 'ミニマルな花瓶',
-    category: 'Vase',
-    thumbnailUrl:
-      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
-    createdAt: new Date().toISOString(),
-  },
-]
-
 const MyShelf = () => {
   const navigate = useNavigate()
 
-  const [items, setItems] = useState<StoredItem[]>(() => {
-    const storedItems = loadItems()
-    return storedItems.length > 0 ? storedItems : initialItems
-  })
+  const [items, setItems] = useState<StoredItem[]>(() => loadItems())
 
   const [usageLogCount, setUsageLogCount] = useState<number>(() => loadUsageLogs().length)
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all')
   const [deleteTarget, setDeleteTarget] = useState<StoredItem | null>(null)
+
+  useEffect(() => {
+    const seeded = seedItemsIfNeeded(initialItems)
+    if (seeded) {
+      setItems(loadItems())
+    }
+  }, [])
 
   const filteredItems = useMemo(() => {
     if (filterCategory === 'all') {
