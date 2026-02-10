@@ -18,10 +18,21 @@ export type UsageLog = {
   usedAt: string
 }
 
+export type DemandFeedback = {
+  targetUser: 'collector' | 'newlywed' | 'gift-seeker' | 'cafeteria' | 'other'
+  painLevel: number
+  weeklyUseIntent: number
+  recommendationIntent: number
+  note?: string
+  submittedAt: string
+}
+
 const STORAGE_KEYS = {
   items: 'utsuwa-diary-items',
   usageLogs: 'utsuwa-diary-usage-logs',
   initialItemsSeeded: 'utsuwa-diary-initial-items-seeded',
+  favoriteItemIds: 'utsuwa-diary-favorite-item-ids',
+  demandFeedback: 'utsuwa-diary-demand-feedback',
 } as const
 
 const canUseStorage = () =>
@@ -71,6 +82,55 @@ export const loadUsageLogs = (): UsageLog[] => {
   return safeParse<UsageLog[]>(window.localStorage.getItem(STORAGE_KEYS.usageLogs), [])
 }
 
+export const loadFavoriteItemIds = (): number[] => {
+  if (!canUseStorage()) {
+    return []
+  }
+
+  return safeParse<number[]>(window.localStorage.getItem(STORAGE_KEYS.favoriteItemIds), [])
+}
+
+export const saveFavoriteItemIds = (itemIds: number[]): void => {
+  if (!canUseStorage()) {
+    return
+  }
+
+  window.localStorage.setItem(STORAGE_KEYS.favoriteItemIds, JSON.stringify(itemIds))
+}
+
+export const toggleFavoriteItem = (itemId: number): number[] => {
+  const current = loadFavoriteItemIds()
+  const updated = current.includes(itemId)
+    ? current.filter((id) => id !== itemId)
+    : [itemId, ...current]
+
+  saveFavoriteItemIds(updated)
+  return updated
+}
+
+export const loadDemandFeedback = (): DemandFeedback[] => {
+  if (!canUseStorage()) {
+    return []
+  }
+
+  return safeParse<DemandFeedback[]>(window.localStorage.getItem(STORAGE_KEYS.demandFeedback), [])
+}
+
+export const saveDemandFeedback = (feedback: DemandFeedback[]): void => {
+  if (!canUseStorage()) {
+    return
+  }
+
+  window.localStorage.setItem(STORAGE_KEYS.demandFeedback, JSON.stringify(feedback))
+}
+
+export const appendDemandFeedback = (entry: DemandFeedback): DemandFeedback[] => {
+  const current = loadDemandFeedback()
+  const updated = [entry, ...current]
+  saveDemandFeedback(updated)
+  return updated
+}
+
 export const hasInitialItemsSeeded = (): boolean => {
   if (!canUseStorage()) {
     return false
@@ -100,6 +160,11 @@ export const seedItemsIfNeeded = (initialItems: StoredItem[]): boolean => {
 export const deleteItem = (id: number): void => {
   const items = loadItems()
   saveItems(items.filter((item) => item.id !== id))
+
+  const favorites = loadFavoriteItemIds()
+  if (favorites.includes(id)) {
+    saveFavoriteItemIds(favorites.filter((favoriteId) => favoriteId !== id))
+  }
 }
 
 export const updateItem = (id: number, updates: Partial<StoredItem>): void => {
