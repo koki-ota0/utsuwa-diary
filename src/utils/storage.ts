@@ -20,6 +20,7 @@ export type UsageLog = {
 const STORAGE_KEYS = {
   items: 'utsuwa-diary-items',
   usageLogs: 'utsuwa-diary-usage-logs',
+  initialItemsSeeded: 'utsuwa-diary-initial-items-seeded',
 } as const
 
 const canUseStorage = () =>
@@ -67,6 +68,32 @@ export const loadUsageLogs = (): UsageLog[] => {
   }
 
   return safeParse<UsageLog[]>(window.localStorage.getItem(STORAGE_KEYS.usageLogs), [])
+}
+
+export const hasInitialItemsSeeded = (): boolean => {
+  if (!canUseStorage()) {
+    return false
+  }
+
+  return window.localStorage.getItem(STORAGE_KEYS.initialItemsSeeded) === 'true'
+}
+
+export const markInitialItemsSeeded = (): void => {
+  if (!canUseStorage()) {
+    return
+  }
+
+  window.localStorage.setItem(STORAGE_KEYS.initialItemsSeeded, 'true')
+}
+
+export const seedItemsIfNeeded = (initialItems: StoredItem[]): boolean => {
+  if (!canUseStorage() || hasInitialItemsSeeded()) {
+    return false
+  }
+
+  saveItems(initialItems)
+  markInitialItemsSeeded()
+  return true
 }
 
 export const deleteItem = (id: number): void => {
