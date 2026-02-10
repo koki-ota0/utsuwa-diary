@@ -27,6 +27,7 @@ Utsuwa Diary is a React + TypeScript app for cataloging ceramics/tableware ("uts
 ### Data Model
 
 Two localStorage-persisted collections:
+
 - **Items** (`StoredItem`): Ceramics with id, name, category, thumbnailUrl, optional brandShop/notes
 - **Usage Logs** (`UsageLog`): Tracks when items are used (itemId, itemName, category, usedAt)
 

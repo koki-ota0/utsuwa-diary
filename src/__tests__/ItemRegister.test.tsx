@@ -1,53 +1,62 @@
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { cleanup, render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import ItemRegister from '../pages/ItemRegister';
+import ItemRegister from '../pages/ItemRegister'
+
+const renderWithRouter = (ui: React.ReactElement) => {
+  return render(<MemoryRouter>{ui}</MemoryRouter>)
+}
 
 describe('ItemRegister', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
-  });
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    cleanup()
+  })
 
   it('shows a validation message when more than 3 photos are selected', async () => {
-    const user = userEvent.setup();
-    render(<ItemRegister />);
+    const user = userEvent.setup()
+    renderWithRouter(<ItemRegister />)
 
-    const input = screen.getByLabelText(/photo upload/i);
+    const input = document.getElementById('photos') as HTMLInputElement
     const files = [
       new File(['a'], 'a.png', { type: 'image/png' }),
       new File(['b'], 'b.png', { type: 'image/png' }),
       new File(['c'], 'c.png', { type: 'image/png' }),
       new File(['d'], 'd.png', { type: 'image/png' }),
-    ];
+    ]
 
-    await user.upload(input, files);
+    await user.upload(input, files)
 
-    expect(screen.getByText('You can upload up to 3 photos.')).toBeInTheDocument();
-    expect(screen.getByText('3 / 3 selected')).toBeInTheDocument();
-  });
+    expect(screen.getByText('写真は3枚までです')).toBeInTheDocument()
+    expect(screen.getByText(/3 \/ 3 枚選択中/)).toBeInTheDocument()
+  })
 
   it('submits a payload when required form fields are valid', async () => {
-    const user = userEvent.setup();
-    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const user = userEvent.setup()
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined)
 
-    render(<ItemRegister />);
+    renderWithRouter(<ItemRegister />)
 
-    await user.type(screen.getByLabelText(/^name$/i), 'Blue Mug');
-    await user.selectOptions(screen.getByLabelText(/category/i), 'Cup');
-    await user.type(screen.getByLabelText(/brand \/ shop/i), 'Local Studio');
-    await user.type(screen.getByLabelText(/notes/i), 'Gift from a friend');
+    await user.type(document.getElementById('name') as HTMLInputElement, '青いマグカップ')
+    await user.click(screen.getByRole('button', { name: /カップ・湯呑み/i }))
+    await user.type(document.getElementById('brandShop') as HTMLInputElement, '地元の工房')
+    await user.type(document.getElementById('notes') as HTMLTextAreaElement, '友人からの贈り物')
 
-    await user.click(screen.getByRole('button', { name: /submit/i }));
+    await user.click(screen.getByRole('button', { name: /登録する/i }))
 
     expect(consoleSpy).toHaveBeenCalledWith(
-      'Item registration payload:',
+      'Saved item to localStorage:',
       expect.objectContaining({
-        name: 'Blue Mug',
+        name: '青いマグカップ',
         category: 'Cup',
-        brandShop: 'Local Studio',
-        notes: 'Gift from a friend',
+        brandShop: '地元の工房',
+        notes: '友人からの贈り物',
       }),
-    );
-  });
-});
+    )
+  })
+})

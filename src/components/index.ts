@@ -1,1 +1,1 @@
-export { default as PageLayout } from './layout/PageLayout'
+export { PageLayout, Navigation } from './layout'

@@ -33,12 +33,12 @@ npm run dev
 
 ## コマンド
 
-| コマンド | 説明 |
-|---------|------|
-| `npm run dev` | 開発サーバー起動 |
-| `npm run build` | 本番ビルド |
-| `npm run test` | テスト実行 |
-| `npm run lint` | ESLint実行 |
+| コマンド         | 説明                   |
+| ---------------- | ---------------------- |
+| `npm run dev`    | 開発サーバー起動       |
+| `npm run build`  | 本番ビルド             |
+| `npm run test`   | テスト実行             |
+| `npm run lint`   | ESLint実行             |
 | `npm run format` | Prettierでフォーマット |
 
 ## データ保存
