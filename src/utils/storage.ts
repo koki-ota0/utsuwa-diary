@@ -4,7 +4,8 @@ export type StoredItem = {
   id: number
   name: string
   category: ItemCategory
-  thumbnailUrl: string
+  // 画像が未登録のアイテムも許容するため任意フィールド
+  thumbnailUrl?: string
   brandShop?: string
   notes?: string
   createdAt: string

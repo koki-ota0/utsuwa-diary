@@ -12,6 +12,7 @@ const renderWithRouter = (ui: React.ReactElement) => {
 describe('MyShelf', () => {
   beforeEach(() => {
     vi.restoreAllMocks()
+    window.localStorage.clear()
   })
 
   it('renders the initial item list', () => {
@@ -23,6 +24,26 @@ describe('MyShelf', () => {
     expect(screen.getByText('陶器のボウル')).toBeInTheDocument()
     expect(screen.getByText('ミニマルな花瓶')).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: /今日使った/i })).toHaveLength(4)
+  })
+
+  it('renders item card even when thumbnailUrl is missing', () => {
+    window.localStorage.setItem(
+      'utsuwa-diary-items',
+      JSON.stringify([
+        {
+          id: 999,
+          name: '画像なしの器',
+          category: 'Misc',
+          createdAt: new Date().toISOString(),
+        },
+      ])
+    )
+
+    renderWithRouter(<MyShelf />)
+
+    expect(screen.getByText('画像なしの器')).toBeInTheDocument()
+    expect(screen.getByText('画像なし')).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: '画像なしの器' })).not.toBeInTheDocument()
   })
 
   it('logs the selected item when clicking "今日使った"', async () => {
