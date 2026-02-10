@@ -39,13 +39,12 @@ const ItemRegister = () => {
   const navigate = useNavigate()
   const isEditMode = Boolean(id)
 
-  const [photos, setPhotos] = useState<File[]>([])
-  const [photoPreview, setPhotoPreview] = useState<string[]>([])
+  const [photo, setPhoto] = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview] = useState<string>('')
   const [name, setName] = useState('')
   const [category, setCategory] = useState<ItemCategory>('Plate')
   const [brandShop, setBrandShop] = useState('')
   const [notes, setNotes] = useState('')
-  const [photoError, setPhotoError] = useState('')
   const [existingThumbnail, setExistingThumbnail] = useState('')
 
   useEffect(() => {
@@ -62,24 +61,14 @@ const ItemRegister = () => {
   }, [id])
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const selectedFiles = Array.from(event.target.files ?? [])
+    const selectedFile = event.target.files?.[0]
 
-    if (selectedFiles.length > 3) {
-      setPhotoError('写真は3枚までです')
-      const limitedFiles = selectedFiles.slice(0, 3)
-      setPhotos(limitedFiles)
-      const previews = await Promise.all(limitedFiles.map(readFileAsDataURL))
-      setPhotoPreview(previews)
-      return
-    }
-
-    setPhotoError('')
-    setPhotos(selectedFiles)
-    if (selectedFiles.length > 0) {
-      const previews = await Promise.all(selectedFiles.map(readFileAsDataURL))
-      setPhotoPreview(previews)
+    if (selectedFile) {
+      setPhoto(selectedFile)
+      setPhotoPreview(await readFileAsDataURL(selectedFile))
     } else {
-      setPhotoPreview([])
+      setPhoto(null)
+      setPhotoPreview('')
     }
   }
 
@@ -87,9 +76,7 @@ const ItemRegister = () => {
     event.preventDefault()
 
     if (isEditMode && id) {
-      const thumbnailUrl = photos[0]
-        ? await readFileAsDataURL(photos[0])
-        : existingThumbnail
+      const thumbnailUrl = photo ? await readFileAsDataURL(photo) : existingThumbnail
 
       updateItem(Number(id), {
         name,
@@ -104,7 +91,7 @@ const ItemRegister = () => {
     }
 
     const existingItems = loadItems()
-    const thumbnailUrl = photos[0] ? await readFileAsDataURL(photos[0]) : ''
+    const thumbnailUrl = photo ? await readFileAsDataURL(photo) : ''
     const nextId =
       existingItems.length > 0 ? Math.max(...existingItems.map((item) => item.id)) + 1 : 1
 
@@ -120,13 +107,12 @@ const ItemRegister = () => {
 
     saveItems([newItem, ...existingItems])
 
-    setPhotos([])
-    setPhotoPreview([])
+    setPhoto(null)
+    setPhotoPreview('')
     setName('')
     setCategory('Plate')
     setBrandShop('')
     setNotes('')
-    setPhotoError('')
 
     console.log('Saved item to localStorage:', newItem)
     navigate('/shelf')
@@ -164,27 +150,25 @@ const ItemRegister = () => {
             </div>
             <div>
               <h2 className="font-semibold text-slate-900">写真</h2>
-              <p className="text-xs text-slate-500">最大3枚まで</p>
+              <p className="text-xs text-slate-500">1枚</p>
             </div>
           </div>
 
           {/* Photo Preview */}
-          {(photoPreview.length > 0 || (isEditMode && existingThumbnail && photos.length === 0)) && (
-            <div className="mb-4 grid grid-cols-3 gap-3">
-              {photoPreview.length > 0 ? (
-                photoPreview.map((src, idx) => (
-                  <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
-                    <img src={src} alt={`プレビュー ${idx + 1}`} className="w-full h-full object-cover" />
-                  </div>
-                ))
-              ) : (
-                <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-100">
-                  <img src={existingThumbnail} alt="現在の画像" className="w-full h-full object-cover" />
+          {(photoPreview || (isEditMode && existingThumbnail && !photo)) && (
+            <div className="mb-4">
+              <div className="relative aspect-square max-w-48 rounded-xl overflow-hidden bg-slate-100">
+                <img
+                  src={photoPreview || existingThumbnail}
+                  alt={photoPreview ? 'プレビュー画像' : '現在の画像'}
+                  className="w-full h-full object-cover"
+                />
+                {!photoPreview && (
                   <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded-md">
                     現在の画像
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
@@ -206,20 +190,11 @@ const ItemRegister = () => {
               id="photos"
               type="file"
               accept="image/*"
-              multiple
               onChange={handlePhotoChange}
               className="hidden"
             />
           </label>
-          <p className="mt-2 text-xs text-slate-500 text-center">{photos.length} / 3 枚選択中</p>
-          {photoError && (
-            <p className="mt-2 flex items-center justify-center gap-1 text-sm text-red-600">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-              </svg>
-              {photoError}
-            </p>
-          )}
+          <p className="mt-2 text-xs text-slate-500 text-center">{photo ? '1 / 1 枚選択中' : '未選択'}</p>
         </div>
 
         {/* Basic Info Card */}
