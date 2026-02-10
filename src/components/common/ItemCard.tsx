@@ -8,14 +8,33 @@ type ItemCardProps = {
   onUsedToday?: (item: StoredItem) => void
   onEdit?: (item: StoredItem) => void
   onDelete?: (item: StoredItem) => void
+  isFavorite?: boolean
+  usageCount?: number
+  layout?: 'grid' | 'list'
+  onToggleFavorite?: (item: StoredItem) => void
 }
 
-function ItemCard({ item, onUsedToday, onEdit, onDelete }: ItemCardProps) {
+function ItemCard({
+  item,
+  onUsedToday,
+  onEdit,
+  onDelete,
+  isFavorite = false,
+  usageCount = 0,
+  layout = 'grid',
+  onToggleFavorite,
+}: ItemCardProps) {
   const hasThumbnail = Boolean(item.thumbnailUrl)
 
   return (
-    <Card hover padding="none" className="overflow-hidden group">
-      <div className="aspect-square overflow-hidden bg-gray-100">
+    <Card
+      hover
+      padding="none"
+      className={`overflow-hidden group ${layout === 'list' ? 'sm:flex sm:min-h-[200px]' : ''}`}
+    >
+      <div
+        className={`overflow-hidden bg-gray-100 ${layout === 'list' ? 'sm:w-64 sm:flex-shrink-0 aspect-square sm:aspect-auto' : 'aspect-square'}`}
+      >
         {hasThumbnail ? (
           <img
             src={item.thumbnailUrl}
@@ -24,7 +43,13 @@ function ItemCard({ item, onUsedToday, onEdit, onDelete }: ItemCardProps) {
           />
         ) : (
           <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-slate-100 to-slate-200 text-slate-500">
-            <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <svg
+              className="h-10 w-10"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden="true"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -36,12 +61,39 @@ function ItemCard({ item, onUsedToday, onEdit, onDelete }: ItemCardProps) {
           </div>
         )}
       </div>
-      <div className="p-4">
+      <div className="p-4 flex-1">
         <div className="flex items-start justify-between gap-2 mb-2">
           <Badge category={item.category} />
+          {onToggleFavorite && (
+            <button
+              type="button"
+              onClick={() => onToggleFavorite(item)}
+              aria-label={isFavorite ? 'お気に入り解除' : 'お気に入り追加'}
+              className={`p-2 rounded-lg transition-colors ${
+                isFavorite
+                  ? 'text-rose-600 bg-rose-50 hover:bg-rose-100'
+                  : 'text-slate-400 hover:text-rose-500 hover:bg-rose-50'
+              }`}
+            >
+              <svg
+                className="w-5 h-5"
+                fill={isFavorite ? 'currentColor' : 'none'}
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.8}
+                  d="M11.995 21.438l-1.432-1.308C5.205 15.284 2 12.373 2 8.82 2 5.908 4.29 3.62 7.2 3.62c1.646 0 3.226.77 4.255 1.996 1.03-1.227 2.61-1.996 4.255-1.996 2.91 0 5.2 2.288 5.2 5.2 0 3.553-3.204 6.464-8.563 11.319l-1.352 1.299z"
+                />
+              </svg>
+            </button>
+          )}
         </div>
         <h3 className="font-medium text-gray-900 truncate mb-1">{item.name}</h3>
-        {item.brandShop && <p className="text-sm text-gray-500 truncate mb-3">{item.brandShop}</p>}
+        {item.brandShop && <p className="text-sm text-gray-500 truncate mb-2">{item.brandShop}</p>}
+        <p className="text-xs text-slate-500 mb-3">累計使用 {usageCount} 回</p>
         <div className="flex flex-wrap gap-2">
           {onUsedToday && (
             <Button variant="primary" size="sm" onClick={() => onUsedToday(item)}>
