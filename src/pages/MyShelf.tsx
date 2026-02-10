@@ -5,11 +5,12 @@ import {
   loadFavoriteItemIds,
   loadItems,
   loadUsageLogs,
-  saveUsageLogs,
+  createUsageLog,
   seedItemsIfNeeded,
   toggleFavoriteItem,
   type ItemCategory,
   type StoredItem,
+  type UsageLog,
 } from '../utils/storage'
 import { ItemCard } from '../components/common'
 import CategoryFilter from '../components/common/CategoryFilter'
@@ -31,8 +32,8 @@ const categoryLabels: Record<ItemCategory, string> = {
 const MyShelf = () => {
   const navigate = useNavigate()
 
-  const [items, setItems] = useState<StoredItem[]>(() => loadItems())
-  const [usageLogs, setUsageLogs] = useState(() => loadUsageLogs())
+  const [items, setItems] = useState<StoredItem[]>([])
+  const [usageLogs, setUsageLogs] = useState<UsageLog[]>([])
   const usageLogCount = usageLogs.length
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all')
   const [deleteTarget, setDeleteTarget] = useState<StoredItem | null>(null)
@@ -40,13 +41,23 @@ const MyShelf = () => {
   const [sortMode, setSortMode] = useState<SortMode>('newest')
   const [viewMode, setViewMode] = useState<ViewMode>('grid')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
-  const [favoriteItemIds, setFavoriteItemIds] = useState<number[]>(() => loadFavoriteItemIds())
+  const [favoriteItemIds, setFavoriteItemIds] = useState<number[]>([])
 
   useEffect(() => {
-    const seeded = seedItemsIfNeeded(initialItems)
-    if (seeded) {
-      setItems(loadItems())
+    const initialize = async () => {
+      await seedItemsIfNeeded(initialItems)
+      const [loadedItems, loadedUsageLogs, loadedFavoriteItemIds] = await Promise.all([
+        loadItems(),
+        loadUsageLogs(),
+        loadFavoriteItemIds(),
+      ])
+
+      setItems(loadedItems)
+      setUsageLogs(loadedUsageLogs)
+      setFavoriteItemIds(loadedFavoriteItemIds)
     }
+
+    void initialize()
   }, [])
 
   const usageMap = useMemo(() => {
@@ -93,7 +104,7 @@ const MyShelf = () => {
     return top && top.count > 0 ? `${top.item.name} (${top.count}回)` : 'まだ記録がありません'
   }, [items, usageMap])
 
-  const handleUsedToday = (item: StoredItem) => {
+  const handleUsedToday = async (item: StoredItem) => {
     const updatedLogs = [
       {
         itemId: item.id,
@@ -104,8 +115,10 @@ const MyShelf = () => {
       ...usageLogs,
     ]
 
-    saveUsageLogs(updatedLogs)
-    setUsageLogs(updatedLogs)
+    const created = await createUsageLog(updatedLogs[0])
+    if (created) {
+      setUsageLogs((prev) => [created, ...prev])
+    }
     console.log(`Used Today: ${item.name} (${item.category})`)
   }
 
@@ -117,14 +130,14 @@ const MyShelf = () => {
     setDeleteTarget(item)
   }
 
-  const handleToggleFavorite = (item: StoredItem) => {
-    const updated = toggleFavoriteItem(item.id)
+  const handleToggleFavorite = async (item: StoredItem) => {
+    const updated = await toggleFavoriteItem(item.id)
     setFavoriteItemIds(updated)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deleteTarget) {
-      deleteItem(deleteTarget.id)
+      await deleteItem(deleteTarget.id)
       setItems((prev) => prev.filter((item) => item.id !== deleteTarget.id))
       setFavoriteItemIds((prev) => prev.filter((id) => id !== deleteTarget.id))
       setDeleteTarget(null)

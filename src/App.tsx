@@ -6,7 +6,7 @@ import { seedItemsIfNeeded } from './utils/storage'
 
 function App() {
   useEffect(() => {
-    seedItemsIfNeeded(initialItems)
+    void seedItemsIfNeeded(initialItems)
   }, [])
 
   return (

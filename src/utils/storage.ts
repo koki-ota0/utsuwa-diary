@@ -4,7 +4,6 @@ export type StoredItem = {
   id: number
   name: string
   category: ItemCategory
-  // 画像が未登録のアイテムも許容するため任意フィールド
   thumbnailUrl?: string
   brandShop?: string
   notes?: string
@@ -27,156 +26,90 @@ export type DemandFeedback = {
   submittedAt: string
 }
 
-const STORAGE_KEYS = {
-  items: 'utsuwa-diary-items',
-  usageLogs: 'utsuwa-diary-usage-logs',
-  initialItemsSeeded: 'utsuwa-diary-initial-items-seeded',
-  favoriteItemIds: 'utsuwa-diary-favorite-item-ids',
-  demandFeedback: 'utsuwa-diary-demand-feedback',
-} as const
+type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-const canUseStorage = () =>
-  typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
+const API_BASE_URL = 'http://utsuwa-diary-backend:8080'
 
-const safeParse = <T>(value: string | null, fallback: T): T => {
-  if (!value) {
-    return fallback
+const request = async <T>(path: string, method: HttpMethod = 'GET', body?: unknown): Promise<T> => {
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  if (!response.ok) {
+    throw new Error(`API request failed: ${method} ${path} (${response.status})`)
   }
 
+  if (response.status === 204) {
+    return undefined as T
+  }
+
+  return (await response.json()) as T
+}
+
+const safeRequest = async <T>(path: string, fallback: T, method: HttpMethod = 'GET', body?: unknown) => {
   try {
-    return JSON.parse(value) as T
-  } catch {
+    return await request<T>(path, method, body)
+  } catch (error) {
+    console.error(error)
     return fallback
   }
 }
 
-export const saveItems = (items: StoredItem[]): void => {
-  if (!canUseStorage()) {
-    return
-  }
-
-  window.localStorage.setItem(STORAGE_KEYS.items, JSON.stringify(items))
+export const loadItems = async (): Promise<StoredItem[]> => {
+  return safeRequest<StoredItem[]>('/items', [])
 }
 
-export const loadItems = (): StoredItem[] => {
-  if (!canUseStorage()) {
-    return []
-  }
-
-  return safeParse<StoredItem[]>(window.localStorage.getItem(STORAGE_KEYS.items), [])
+export const createItem = async (item: Omit<StoredItem, 'id'>): Promise<StoredItem | null> => {
+  return safeRequest<StoredItem | null>('/items', null, 'POST', item)
 }
 
-export const saveUsageLogs = (logs: UsageLog[]): void => {
-  if (!canUseStorage()) {
-    return
-  }
-
-  window.localStorage.setItem(STORAGE_KEYS.usageLogs, JSON.stringify(logs))
+export const loadUsageLogs = async (): Promise<UsageLog[]> => {
+  return safeRequest<UsageLog[]>('/usage-logs', [])
 }
 
-export const loadUsageLogs = (): UsageLog[] => {
-  if (!canUseStorage()) {
-    return []
-  }
-
-  return safeParse<UsageLog[]>(window.localStorage.getItem(STORAGE_KEYS.usageLogs), [])
+export const createUsageLog = async (log: UsageLog): Promise<UsageLog | null> => {
+  return safeRequest<UsageLog | null>('/usage-logs', null, 'POST', log)
 }
 
-export const loadFavoriteItemIds = (): number[] => {
-  if (!canUseStorage()) {
-    return []
-  }
-
-  return safeParse<number[]>(window.localStorage.getItem(STORAGE_KEYS.favoriteItemIds), [])
+export const loadFavoriteItemIds = async (): Promise<number[]> => {
+  return safeRequest<number[]>('/favorites', [])
 }
 
-export const saveFavoriteItemIds = (itemIds: number[]): void => {
-  if (!canUseStorage()) {
-    return
-  }
-
-  window.localStorage.setItem(STORAGE_KEYS.favoriteItemIds, JSON.stringify(itemIds))
+export const toggleFavoriteItem = async (itemId: number): Promise<number[]> => {
+  return safeRequest<number[]>('/favorites/toggle', [], 'POST', { itemId })
 }
 
-export const toggleFavoriteItem = (itemId: number): number[] => {
-  const current = loadFavoriteItemIds()
-  const updated = current.includes(itemId)
-    ? current.filter((id) => id !== itemId)
-    : [itemId, ...current]
-
-  saveFavoriteItemIds(updated)
-  return updated
+export const loadDemandFeedback = async (): Promise<DemandFeedback[]> => {
+  return safeRequest<DemandFeedback[]>('/demand-feedback', [])
 }
 
-export const loadDemandFeedback = (): DemandFeedback[] => {
-  if (!canUseStorage()) {
-    return []
-  }
-
-  return safeParse<DemandFeedback[]>(window.localStorage.getItem(STORAGE_KEYS.demandFeedback), [])
+export const appendDemandFeedback = async (entry: DemandFeedback): Promise<DemandFeedback[]> => {
+  return safeRequest<DemandFeedback[]>('/demand-feedback', [], 'POST', entry)
 }
 
-export const saveDemandFeedback = (feedback: DemandFeedback[]): void => {
-  if (!canUseStorage()) {
-    return
-  }
+export const seedItemsIfNeeded = async (initialItems: StoredItem[]): Promise<boolean> => {
+  const existingItems = await loadItems()
 
-  window.localStorage.setItem(STORAGE_KEYS.demandFeedback, JSON.stringify(feedback))
-}
-
-export const appendDemandFeedback = (entry: DemandFeedback): DemandFeedback[] => {
-  const current = loadDemandFeedback()
-  const updated = [entry, ...current]
-  saveDemandFeedback(updated)
-  return updated
-}
-
-export const hasInitialItemsSeeded = (): boolean => {
-  if (!canUseStorage()) {
+  if (existingItems.length > 0) {
     return false
   }
 
-  return window.localStorage.getItem(STORAGE_KEYS.initialItemsSeeded) === 'true'
+  const seeded = await safeRequest<StoredItem[]>('/items/seed', [], 'POST', { items: initialItems })
+  return seeded.length > 0
 }
 
-export const markInitialItemsSeeded = (): void => {
-  if (!canUseStorage()) {
-    return
-  }
-
-  window.localStorage.setItem(STORAGE_KEYS.initialItemsSeeded, 'true')
+export const deleteItem = async (id: number): Promise<void> => {
+  await safeRequest<void>(`/items/${id}`, undefined, 'DELETE')
 }
 
-export const seedItemsIfNeeded = (initialItems: StoredItem[]): boolean => {
-  if (!canUseStorage() || hasInitialItemsSeeded()) {
-    return false
-  }
-
-  saveItems(initialItems)
-  markInitialItemsSeeded()
-  return true
+export const updateItem = async (id: number, updates: Partial<StoredItem>): Promise<StoredItem | null> => {
+  return safeRequest<StoredItem | null>(`/items/${id}`, null, 'PATCH', updates)
 }
 
-export const deleteItem = (id: number): void => {
-  const items = loadItems()
-  saveItems(items.filter((item) => item.id !== id))
-
-  const favorites = loadFavoriteItemIds()
-  if (favorites.includes(id)) {
-    saveFavoriteItemIds(favorites.filter((favoriteId) => favoriteId !== id))
-  }
-}
-
-export const updateItem = (id: number, updates: Partial<StoredItem>): void => {
-  const items = loadItems()
-  const index = items.findIndex((item) => item.id === id)
-  if (index !== -1) {
-    items[index] = { ...items[index], ...updates }
-    saveItems(items)
-  }
-}
-
-export const getItemById = (id: number): StoredItem | undefined => {
-  const items = loadItems()
-  return items.find((item) => item.id === id)
+export const getItemById = async (id: number): Promise<StoredItem | null> => {
+  return safeRequest<StoredItem | null>(`/items/${id}`, null)
 }

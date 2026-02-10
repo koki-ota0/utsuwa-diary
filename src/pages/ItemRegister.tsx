@@ -1,9 +1,8 @@
 import { ChangeEvent, FormEvent, useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
+  createItem,
   getItemById,
-  loadItems,
-  saveItems,
   updateItem,
   type ItemCategory,
 } from '../utils/storage'
@@ -48,16 +47,22 @@ const ItemRegister = () => {
   const [existingThumbnail, setExistingThumbnail] = useState('')
 
   useEffect(() => {
-    if (id) {
-      const item = getItemById(Number(id))
+    const loadItem = async () => {
+      if (!id) {
+        return
+      }
+
+      const item = await getItemById(Number(id))
       if (item) {
         setName(item.name)
         setCategory(item.category)
         setBrandShop(item.brandShop ?? '')
         setNotes(item.notes ?? '')
-        setExistingThumbnail(item.thumbnailUrl)
+        setExistingThumbnail(item.thumbnailUrl ?? '')
       }
     }
+
+    void loadItem()
   }, [id])
 
   const handlePhotoChange = async (event: ChangeEvent<HTMLInputElement>) => {
@@ -78,7 +83,7 @@ const ItemRegister = () => {
     if (isEditMode && id) {
       const thumbnailUrl = photo ? await readFileAsDataURL(photo) : existingThumbnail
 
-      updateItem(Number(id), {
+      await updateItem(Number(id), {
         name,
         category,
         thumbnailUrl,
@@ -90,13 +95,9 @@ const ItemRegister = () => {
       return
     }
 
-    const existingItems = loadItems()
     const thumbnailUrl = photo ? await readFileAsDataURL(photo) : ''
-    const nextId =
-      existingItems.length > 0 ? Math.max(...existingItems.map((item) => item.id)) + 1 : 1
 
     const newItem = {
-      id: nextId,
       name,
       category,
       thumbnailUrl,
@@ -105,7 +106,7 @@ const ItemRegister = () => {
       createdAt: new Date().toISOString(),
     }
 
-    saveItems([newItem, ...existingItems])
+    await createItem(newItem)
 
     setPhoto(null)
     setPhotoPreview('')
@@ -114,7 +115,7 @@ const ItemRegister = () => {
     setBrandShop('')
     setNotes('')
 
-    console.log('Saved item to localStorage:', newItem)
+    console.log('Saved item to backend:', newItem)
     navigate('/shelf')
   }
 

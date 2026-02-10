@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { loadUsageLogs, type ItemCategory, type UsageLog } from '../utils/storage'
 import { Badge, EmptyState } from '../components/common'
 import CategoryFilter from '../components/common/CategoryFilter'
@@ -12,7 +12,15 @@ type GroupedLogs = {
 
 function UsageHistory() {
   const [filterCategory, setFilterCategory] = useState<FilterCategory>('all')
-  const logs = useMemo(() => loadUsageLogs(), [])
+  const [logs, setLogs] = useState<UsageLog[]>([])
+
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLogs(await loadUsageLogs())
+    }
+
+    void fetchLogs()
+  }, [])
 
   const filteredLogs = useMemo(() => {
     if (filterCategory === 'all') {
