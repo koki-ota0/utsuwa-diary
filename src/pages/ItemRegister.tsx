@@ -1,13 +1,20 @@
 import { ChangeEvent, FormEvent, useState } from 'react';
+import { loadItems, saveItems, type ItemCategory } from '../utils/storage';
 
-type Category = 'Plate' | 'Cup' | 'Vase' | 'Misc';
+const categories: ItemCategory[] = ['Plate', 'Cup', 'Vase', 'Bowl', 'Misc'];
 
-const categories: Category[] = ['Plate', 'Cup', 'Vase', 'Misc'];
+const readFileAsDataURL = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+    reader.onerror = () => reject(new Error('Failed to read the selected image.'));
+    reader.readAsDataURL(file);
+  });
 
 const ItemRegister = () => {
   const [photos, setPhotos] = useState<File[]>([]);
   const [name, setName] = useState('');
-  const [category, setCategory] = useState<Category>('Plate');
+  const [category, setCategory] = useState<ItemCategory>('Plate');
   const [brandShop, setBrandShop] = useState('');
   const [notes, setNotes] = useState('');
   const [photoError, setPhotoError] = useState('');
@@ -25,19 +32,33 @@ const ItemRegister = () => {
     setPhotos(selectedFiles);
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    const formData = {
-      photos,
+    const existingItems = loadItems();
+    const thumbnailUrl = photos[0] ? await readFileAsDataURL(photos[0]) : '';
+    const nextId = existingItems.length > 0 ? Math.max(...existingItems.map((item) => item.id)) + 1 : 1;
+
+    const newItem = {
+      id: nextId,
       name,
       category,
+      thumbnailUrl,
       brandShop,
       notes,
+      createdAt: new Date().toISOString(),
     };
 
-    // Replace this with API integration when backend endpoint is ready.
-    console.log('Item registration payload:', formData);
+    saveItems([newItem, ...existingItems]);
+
+    setPhotos([]);
+    setName('');
+    setCategory('Plate');
+    setBrandShop('');
+    setNotes('');
+    setPhotoError('');
+
+    console.log('Saved item to localStorage:', newItem);
   };
 
   return (
@@ -84,7 +105,7 @@ const ItemRegister = () => {
             <select
               id="category"
               value={category}
-              onChange={(event) => setCategory(event.target.value as Category)}
+              onChange={(event) => setCategory(event.target.value as ItemCategory)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none ring-indigo-500 focus:ring-2"
             >
               {categories.map((option) => (

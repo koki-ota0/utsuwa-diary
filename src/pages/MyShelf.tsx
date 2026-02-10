@@ -1,19 +1,14 @@
 import { useState } from 'react';
+import { loadItems, loadUsageLogs, saveUsageLogs, type StoredItem } from '../utils/storage';
 
-type ShelfItem = {
-  id: number;
-  name: string;
-  category: 'Plate' | 'Cup' | 'Vase' | 'Bowl' | 'Misc';
-  thumbnailUrl: string;
-};
-
-const initialItems: ShelfItem[] = [
+const initialItems: StoredItem[] = [
   {
     id: 1,
     name: 'Indigo Dinner Plate',
     category: 'Plate',
     thumbnailUrl:
       'https://images.unsplash.com/photo-1612198188060-c7c2a3b66eae?auto=format&fit=crop&w=800&q=80',
+    createdAt: new Date().toISOString(),
   },
   {
     id: 2,
@@ -21,6 +16,7 @@ const initialItems: ShelfItem[] = [
     category: 'Cup',
     thumbnailUrl:
       'https://images.unsplash.com/photo-1514228742587-6b1558fcf93a?auto=format&fit=crop&w=800&q=80',
+    createdAt: new Date().toISOString(),
   },
   {
     id: 3,
@@ -28,6 +24,7 @@ const initialItems: ShelfItem[] = [
     category: 'Bowl',
     thumbnailUrl:
       'https://images.unsplash.com/photo-1603199506016-b9a594b593c0?auto=format&fit=crop&w=800&q=80',
+    createdAt: new Date().toISOString(),
   },
   {
     id: 4,
@@ -35,13 +32,33 @@ const initialItems: ShelfItem[] = [
     category: 'Vase',
     thumbnailUrl:
       'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=800&q=80',
+    createdAt: new Date().toISOString(),
   },
 ];
 
 const MyShelf = () => {
-  const [items] = useState<ShelfItem[]>(initialItems);
+  const [items] = useState<StoredItem[]>(() => {
+    const storedItems = loadItems();
+    return storedItems.length > 0 ? storedItems : initialItems;
+  });
 
-  const handleUsedToday = (item: ShelfItem) => {
+  const [usageLogCount, setUsageLogCount] = useState<number>(() => loadUsageLogs().length);
+
+  const handleUsedToday = (item: StoredItem) => {
+    const currentLogs = loadUsageLogs();
+
+    const updatedLogs = [
+      {
+        itemId: item.id,
+        itemName: item.name,
+        category: item.category,
+        usedAt: new Date().toISOString(),
+      },
+      ...currentLogs,
+    ];
+
+    saveUsageLogs(updatedLogs);
+    setUsageLogCount(updatedLogs.length);
     console.log(`Used Today: ${item.name} (${item.category})`);
   };
 
@@ -50,6 +67,7 @@ const MyShelf = () => {
       <header className="mb-8">
         <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">My Shelf</h1>
         <p className="mt-2 text-sm text-gray-600">Items you&apos;ve added to your collection.</p>
+        <p className="mt-1 text-xs text-gray-500">Usage logs stored: {usageLogCount}</p>
       </header>
 
       {items.length === 0 ? (
