@@ -1,4 +1,4 @@
-import { FormEvent, useMemo, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   appendDemandFeedback,
@@ -17,14 +17,30 @@ const personaLabels: Record<DemandFeedback['targetUser'], string> = {
 }
 
 function Home() {
-  const items = useMemo(() => loadItems(), [])
-  const usageLogs = useMemo(() => loadUsageLogs(), [])
-  const [feedbackList, setFeedbackList] = useState(() => loadDemandFeedback())
+  const [items, setItems] = useState<Awaited<ReturnType<typeof loadItems>>>([])
+  const [usageLogs, setUsageLogs] = useState<Awaited<ReturnType<typeof loadUsageLogs>>>([])
+  const [feedbackList, setFeedbackList] = useState<Awaited<ReturnType<typeof loadDemandFeedback>>>([])
   const [targetUser, setTargetUser] = useState<DemandFeedback['targetUser']>('collector')
   const [painLevel, setPainLevel] = useState(4)
   const [weeklyUseIntent, setWeeklyUseIntent] = useState(4)
   const [recommendationIntent, setRecommendationIntent] = useState(4)
   const [note, setNote] = useState('')
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      const [loadedItems, loadedUsageLogs, loadedFeedback] = await Promise.all([
+        loadItems(),
+        loadUsageLogs(),
+        loadDemandFeedback(),
+      ])
+
+      setItems(loadedItems)
+      setUsageLogs(loadedUsageLogs)
+      setFeedbackList(loadedFeedback)
+    }
+
+    void fetchDashboardData()
+  }, [])
 
   const stats = useMemo(() => {
     const uniqueItemsUsed = new Set(usageLogs.map((log) => log.itemId)).size
@@ -103,9 +119,9 @@ function Home() {
     })
   }
 
-  const handleSubmitFeedback = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmitFeedback = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const updated = appendDemandFeedback({
+    const updated = await appendDemandFeedback({
       targetUser,
       painLevel,
       weeklyUseIntent,
